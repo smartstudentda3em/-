@@ -1,0 +1,57 @@
+name: memos
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: memos_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: memos_db
+      MYSQL_USER: memos_user
+      MYSQL_PASSWORD: memos_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - memos_dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: memos_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: memos_db
+      DB_USERNAME: memos_user
+      DB_PASSWORD: memos_password
+      # ===== بيانات دخول مدير المطبعة الافتراضية (للاختبار المحلي) =====
+      # ملاحظة: علامة $ تُكتب $$ في docker-compose لتُقرأ حرفياً (القيمة الفعلية: Ayman987654$)
+      ADMIN_PHONE: "99970766"
+      ADMIN_PASSWORD: "Ayman987654$$"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: memos_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5174:80"
+
+volumes:
+  memos_dbdata:
